@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الرئيسية - منصة سَما</title>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding-top: 80px; /* ننطي مساحة للـ header */
+        }
+        
+        /* الهيدر (الشريط العلوي) */
+        .header {
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 10px 20px;
+            position: fixed;
+            top: 0;
+            width: 95%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+        .header .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff; /* نفس لون اللوكو الأزرق */
+        }
+        .header .nav-links a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #555;
+            font-weight: bold;
+        }
+        .header .nav-links a.login-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+        .header .nav-links a.admin-btn {
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+
+        /* حاوية الكارتات */
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 1rem;
+        }
+        .teachers-grid {
+            display: grid;
+            /* هذا الكود يسوي الكارتات متجاوبة */
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px; /* المسافة بين الكارتات */
+        }
+        
+        /* تصميم الكارت (مثل الصورة اللي دزيتها) */
+        .teacher-card {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            padding: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .teacher-card:hover {
+            transform: translateY(-5px); /* الكارت "يطفر" شوية لي فوك */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+        .teacher-card img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%; /* يسوي الصورة دائرية */
+            object-fit: cover; /* حتى الصورة ما تتمطط */
+            border: 4px solid #007bff;
+            margin-bottom: 1rem;
+        }
+        .teacher-card h3 {
+            margin: 10px 0 5px 0;
+            color: #333;
+        }
+        .teacher-card p {
+            margin: 0;
+            color: #777;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        /* شاشة التحميل (Loading) */
+        #loader {
+            font-size: 20px;
+            text-align: center;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="logo">منصة سَما</div>
+        <nav class="nav-links" id="nav-links">
+            </nav>
+    </header>
+
+    <div class="container">
+        <h1>أساتذة المنصة</h1>
+        <p>اختر الأستاذ وابدأ رحلة التفوق</p>
+        
+        <div class="teachers-grid" id="teachers-grid">
+            <div id="loader">جاري تحميل المدرسين...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        // استيراد الخدمات (لازم ملف config.js يكون موجود)
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+        import { collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+        const teachersGrid = document.getElementById('teachers-grid');
+        const loader = document.getElementById('loader');
+        const navLinks = document.getElementById('nav-links');
+
+        // --- أولاً: التأكد من المستخدم (مسجل لو لا؟ أدمن لو طالب؟) ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // المستخدم مسجل دخول
+                
+                // 1. نجيب بياناته (حتى نعرف هو أدمن لو لا)
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                let userRole = "student"; // الافتراضي
+                if (userDocSnap.exists()) {
+                    userRole = userDocSnap.data().role;
+                }
+
+                // 2. نعبي الروابط (الهيدر)
+                navLinks.innerHTML = `
+                    <a href="#">أهلاً, ${user.email.split('@')[0]}</a>
+                    ${userRole === 'admin' ? '<a href="admin_control.html" class="admin-btn">لوحة التحكم</a>' : ''}
+                    <a href="#" id="logout-btn">تسجيل الخروج</a>
+                `;
+
+                // 3. نضيف وظيفة لزر الخروج
+                document.getElementById('logout-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (confirm("هل تريد تسجيل الخروج؟")) {
+                        signOut(auth).then(() => {
+                            window.location.href = "login.html";
+                        });
+                    }
+                });
+
+            } else {
+                // المستخدم "زائر" (ما مسجل دخول)
+                navLinks.innerHTML = `
+                    <a href="login.html" class="login-btn">تسجيل الدخول</a>
+                    <a href="register.html">إنشاء حساب</a>
+                `;
+            }
+        });
+
+
+        // --- ثانياً: جلب وعرض المدرسين ---
+        async function loadTeachers() {
+            try {
+                // 1. نجيب كل المدرسين من مجموعة "teachers"
+                const querySnapshot = await getDocs(collection(db, "teachers"));
+                
+                // 2. نمسح شاشة التحميل (Loader)
+                teachersGrid.innerHTML = ""; 
+
+                if (querySnapshot.empty) {
+                    teachersGrid.innerHTML = "<p>لم يتم إضافة أي مدرسين بعد.</p>";
+                    return;
+                }
+
+                // 3. نلف (loop) على كل مدرس ونبني "الكارت" ماله
+                querySnapshot.forEach((doc) => {
+                    const teacher = doc.data();
+                    const teacherId = doc.id; // هذا الـ ID مهم
+
+                    // إنشاء عنصر الكارت
+                    const card = document.createElement('div');
+                    card.className = 'teacher-card';
+                    
+                    // نربط الكارت بصفحة المدرس (بعدين نسويها)
+                    card.onclick = () => {
+                         // (لاحقاً) نوديه لصفحة المدرس
+                         // window.location.href = `teacher.html?id=${teacherId}`;
+                         alert(`أنت اخترت المدرس: ${teacher.name}`);
+                    };
+
+                    // نعبي بيانات الكارت
+                    card.innerHTML = `
+                        <img src="${teacher.imageUrl}" alt="${teacher.name}">
+                        <h3>${teacher.name}</h3>
+                        <p>${teacher.subject}</p>
+                    `;
+                    
+                    // نضيف الكارت للشبكة (Grid)
+                    teachersGrid.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error("خطأ بجلب المدرسين: ", error);
+                loader.innerText = "حدث خطأ أثناء تحميل المدرسين. حاول تحديث الصفحة.";
+            }
+        }
+
+        // --- ثالثاً: تشغيل الكود ---
+        loadTeachers();
+
+    </script>
+
+</body>
+</html>
