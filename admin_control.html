@@ -11,7 +11,7 @@
         body {
             font-family: 'Cairo', sans-serif;
             background-color: #f4f7f6;
-            display: none; /* !!! أهم سطر: إخفاء الصفحة بالكامل !!! */
+            display: none; /* !!! إخفاء الصفحة بالكامل بالبداية !!! */
             margin: 0;
             padding: 20px;
         }
@@ -31,9 +31,13 @@
         }
         .form-section {
             margin-top: 2rem;
+            border-top: 1px solid #eee;
+            padding-top: 1.5rem;
         }
         .form-section h2 {
             color: #555;
+            border-right: 4px solid #007bff;
+            padding-right: 10px;
         }
         .form-group {
             margin-bottom: 1rem;
@@ -65,12 +69,27 @@
         .form-group button:hover {
             background-color: #218838;
         }
+        
+        /* أزرار الخروج والرجوع */
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+        .nav-buttons button {
+            flex: 1; /* ياخذون نفس العرض */
+        }
         #logoutButton {
             background-color: #dc3545;
-            margin-top: 1rem;
         }
         #logoutButton:hover {
             background-color: #c82333;
+        }
+        #backButton {
+            background-color: #6c757d;
+        }
+        #backButton:hover {
+            background-color: #5a6268;
         }
     </style>
 </head>
@@ -82,7 +101,7 @@
         <p>أهلاً بك يا مدير! من هنا تكدر تتحكم بكل شي بالمنصة.</p>
 
         <div class="form-section" id="add-teacher-section">
-            <h2>إضافة مدرس جديد</h2>
+            <h2>1. إضافة مدرس جديد</h2>
             <form id="add-teacher-form">
                 <div class="form-group">
                     <label for="teacher-name">اسم المدرس:</label>
@@ -102,7 +121,64 @@
             </form>
         </div>
 
-        <div class="form-group">
+        <div class="form-section" id="add-season-section">
+            <h2>2. إضافة فصل جديد</h2>
+            <form id="add-season-form">
+                <div class="form-group">
+                    <label for="season-teacher">اختر المدرس:</label>
+                    <select id="season-teacher-select" required>
+                        <option value="">جاري تحميل المدرسين...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="season-title">عنوان الفصل:</label>
+                    <input type="text" id="season-title" placeholder="مثال: الفصل الأول - المتسعات" required>
+                </div>
+                <div class="form-group">
+                    <label for="season-order">تسلسل الفصل (رقم):</label>
+                    <input type="number" id="season-order" placeholder="مثال: 1 (لترتيب الفصول)" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" id="add-season-button">إضافة الفصل</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="form-section" id="add-episode-section">
+            <h2>3. إضافة محاضرة (حلقة)</h2>
+            <form id="add-episode-form">
+                <div class="form-group">
+                    <label for="episode-teacher">أولاً، اختر المدرس:</label>
+                    <select id="episode-teacher-select" required>
+                        <option value="">جاري تحميل المدرسين...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="episode-season">ثانياً، اختر الفصل:</label>
+                    <select id="episode-season-select" required>
+                        <option value="">(اختر مدرس أولاً)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="episode-title">عنوان المحاضرة:</label>
+                    <input type="text" id="episode-title" placeholder="مثال: المحاضرة 1 - شرح المتسعة" required>
+                </div>
+                <div class="form-group">
+                    <label for="episode-video-url">رابط الفيديو (من Bunny.net):</label>
+                    <input type="text" id="episode-video-url" placeholder="httpsS://... (رابط الفيديو)" required>
+                </div>
+                <div class="form-group">
+                    <label for="episode-order">تسلسل المحاضرة (رقم):</label>
+                    <input type="number" id="episode-order" placeholder="مثال: 1 (لترتيب المحاضرات)" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" id="add-episode-button">إضافة المحاضرة</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="form-group nav-buttons">
+            <button id="backButton">الرجوع للرئيسية</button>
             <button id="logoutButton">تسجيل الخروج</button>
         </div>
         
@@ -111,69 +187,231 @@
     <script type="module">
         // استيراد الخدمات (لازم ملف config.js يكون موجود)
         import { db, auth } from './firebase-config.js';
-        import { collection, addDoc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+        import { collection, addDoc, getDocs, doc, setDoc, query, where, orderBy, collectionGroup } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
         import { signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
-        // --- أولاً: كود "إضافة المدرس" ---
-        
+        // --- جلب كل العناصر (DOM Elements) ---
         const addTeacherForm = document.getElementById('add-teacher-form');
-        const teacherNameInput = document.getElementById('teacher-name');
-        const teacherSubjectInput = document.getElementById('teacher-subject');
-        const teacherImageUrlInput = document.getElementById('teacher-image-url');
-        const addTeacherButton = document.getElementById('add-teacher-button');
+        const addSeasonForm = document.getElementById('add-season-form');
+        const addEpisodeForm = document.getElementById('add-episode-form');
 
-        addTeacherForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); // نمنع الفورم من عمل ريلود
+        const seasonTeacherSelect = document.getElementById('season-teacher-select');
+        const episodeTeacherSelect = document.getElementById('episode-teacher-select');
+        const episodeSeasonSelect = document.getElementById('episode-season-select');
 
-            const name = teacherNameInput.value;
-            const subject = teacherSubjectInput.value;
-            const imageUrl = teacherImageUrlInput.value;
+        const logoutButton = document.getElementById('logoutButton');
+        const backButton = document.getElementById('backButton');
 
-            if (name === "" || subject === "" || imageUrl === "") {
-                alert("يرجى ملء جميع الحقول");
-                return;
+        // --- أولاً: تحميل المدرسين بالـ Dropdowns (القوائم) ---
+        async function loadTeachersDropdowns() {
+            try {
+                const teachersSnapshot = await getDocs(collection(db, "teachers"));
+                
+                // نمسح الخيارات الافتراضية
+                seasonTeacherSelect.innerHTML = '<option value="">-- اختر المدرس --</option>';
+                episodeTeacherSelect.innerHTML = '<option value="">-- اختر المدرس --</option>';
+
+                if (teachersSnapshot.empty) {
+                    seasonTeacherSelect.innerHTML = '<option value="">لا يوجد مدرسين، أضف واحداً أولاً</option>';
+                    episodeTeacherSelect.innerHTML = '<option value="">لا يوجد مدرسين، أضف واحداً أولاً</option>';
+                    return;
+                }
+
+                teachersSnapshot.forEach((doc) => {
+                    const teacher = doc.data();
+                    const teacherId = doc.id;
+                    
+                    const option1 = new Option(teacher.name, teacherId); // (النص، القيمة)
+                    const option2 = new Option(teacher.name, teacherId);
+                    
+                    seasonTeacherSelect.add(option1);
+                    episodeTeacherSelect.add(option2);
+                });
+
+            } catch (error) {
+                console.error("خطأ بجلب المدرسين: ", error);
+                alert("خطأ بجلب قائمة المدرسين.");
             }
+        }
+        
+        // --- ثانياً: كود "إضافة المدرس" (نفسه من قبل) ---
+        addTeacherForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('teacher-name').value;
+            const subject = document.getElementById('teacher-subject').value;
+            const imageUrl = document.getElementById('teacher-image-url').value;
+            const button = document.getElementById('add-teacher-button');
 
-            addTeacherButton.innerText = "جاري الإضافة...";
-            addTeacherButton.disabled = true;
+            button.innerText = "جاري الإضافة...";
+            button.disabled = true;
 
             try {
-                // هاي أهم خطوة: إضافة "وثيقة" (document) جديدة
-                // بداخل "مجموعة" (collection) اسمها "teachers"
-                const docRef = await addDoc(collection(db, "teachers"), {
+                await addDoc(collection(db, "teachers"), {
                     name: name,
                     subject: subject,
                     imageUrl: imageUrl,
-                    createdAt: new Date() // علمود نعرف يمته ضفناه
+                    createdAt: new Date()
                 });
-                
                 alert("تمت إضافة المدرس بنجاح!");
-                console.log("Teacher added with ID: ", docRef.id);
-
-                // تفريغ الحقول
-                addTeacherForm.reset(); 
-
+                addTeacherForm.reset();
+                loadTeachersDropdowns(); // !!! تحديث القوائم بعد الإضافة
             } catch (error) {
                 console.error("خطأ في إضافة المدرس: ", error);
                 alert("حدث خطأ. حاول مرة أخرى.");
             }
-
-            addTeacherButton.innerText = "إضافة المدرس";
-            addTeacherButton.disabled = false;
+            button.innerText = "إضافة المدرس";
+            button.disabled = false;
         });
 
-        // --- ثانياً: كود "تسجيل الخروج" ---
-        const logoutButton = document.getElementById('logoutButton');
+        // --- ثالثاً: كود "إضافة الفصل" (جديد) ---
+        addSeasonForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const teacherId = seasonTeacherSelect.value;
+            const title = document.getElementById('season-title').value;
+            const order = Number(document.getElementById('season-order').value); // نحول الرقم
+            const button = document.getElementById('add-season-button');
+
+            if (!teacherId) {
+                alert("يرجى اختيار المدرس أولاً");
+                return;
+            }
+
+            button.innerText = "جاري الإضافة...";
+            button.disabled = true;
+
+            try {
+                // هذا هو "العقل":
+                // 1. نروح للمدرس المحدد
+                const teacherRef = doc(db, "teachers", teacherId);
+                // 2. نسوي "مجموعة فرعية" (subcollection) بداخله اسمها "seasons"
+                const seasonsRef = collection(teacherRef, "seasons");
+                // 3. نضيف الفصل الجديد
+                await addDoc(seasonsRef, {
+                    title: title,
+                    order: order,
+                    createdAt: new Date()
+                });
+
+                alert("تمت إضافة الفصل بنجاح!");
+                addSeasonForm.reset();
+
+            } catch (error) {
+                console.error("خطأ في إضافة الفصل: ", error);
+                alert("حدث خطأ. حاول مرة أخرى.");
+            }
+            button.innerText = "إضافة الفصل";
+            button.disabled = false;
+        });
+
+        // --- رابعاً: كود "جلب الفصول" (ديناميكي) ---
+        // هذا الكود يشتغل من نختار "مدرس" بفورم المحاضرات
+        episodeTeacherSelect.addEventListener('change', async (e) => {
+            const teacherId = e.target.value;
+            episodeSeasonSelect.innerHTML = '<option value="">جاري تحميل الفصول...</option>'; // شاشة تحميل
+            episodeSeasonSelect.disabled = true;
+
+            if (!teacherId) {
+                episodeSeasonSelect.innerHTML = '<option value="">(اختر مدرس أولاً)</option>';
+                return;
+            }
+
+            try {
+                // 1. نروح للمدرس المحدد
+                const teacherRef = doc(db, "teachers", teacherId);
+                // 2. نجيب "المجموعة الفرعية" (subcollection) مال الفصول مالته
+                const seasonsRef = collection(teacherRef, "seasons");
+                // 3. نرتبها حسب "التسلسل" (order)
+                const q = query(seasonsRef, orderBy("order", "asc"));
+                const seasonsSnapshot = await getDocs(q);
+
+                if (seasonsSnapshot.empty) {
+                    episodeSeasonSelect.innerHTML = '<option value="">هذا المدرس ليس لديه فصول بعد</option>';
+                    return;
+                }
+                
+                episodeSeasonSelect.innerHTML = '<option value="">-- اختر الفصل --</option>';
+                seasonsSnapshot.forEach((doc) => {
+                    const season = doc.data();
+                    const seasonId = doc.id;
+                    const option = new Option(season.title, seasonId); // (النص، القيمة)
+                    episodeSeasonSelect.add(option);
+                });
+                
+                episodeSeasonSelect.disabled = false;
+
+            } catch (error) {
+                console.error("خطأ بجلب الفصول: ", error);
+                episodeSeasonSelect.innerHTML = '<option value="">خطأ بالتحميل</option>';
+            }
+        });
+
+        // --- خامساً: كود "إضافة المحاضرة" (جديد) ---
+        addEpisodeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const teacherId = episodeTeacherSelect.value;
+            const seasonId = episodeSeasonSelect.value;
+            const title = document.getElementById('episode-title').value;
+            const videoUrl = document.getElementById('episode-video-url').value;
+            const order = Number(document.getElementById('episode-order').value);
+            const button = document.getElementById('add-episode-button');
+
+            if (!teacherId || !seasonId) {
+                alert("يرجى اختيار المدرس والفصل أولاً");
+                return;
+            }
+
+            button.innerText = "جاري الإضافة...";
+            button.disabled = true;
+
+            try {
+                // هذا هو "العقل":
+                // 1. نروح للمدرس المحدد
+                const teacherRef = doc(db, "teachers", teacherId);
+                // 2. نروح للفصل المحدد (داخل المدرس)
+                const seasonRef = doc(teacherRef, "seasons", seasonId);
+                // 3. نسوي "مجموعة فرعية" (subcollection) بداخل الفصل اسمها "episodes"
+                const episodesRef = collection(seasonRef, "episodes");
+                // 4. نضيف المحاضرة الجديدة
+                await addDoc(episodesRef, {
+                    title: title,
+                    videoUrl: videoUrl,
+                    order: order,
+                    createdAt: new Date()
+                });
+
+                alert("تمت إضافة المحاضرة بنجاح!");
+                addEpisodeForm.reset();
+                // نعيد تحميل الفصول (اختياري)
+                episodeSeasonSelect.innerHTML = '<option value="">(اختر مدرس أولاً)</option>';
+                episodeTeacherSelect.value = "";
+
+
+            } catch (error) {
+                console.error("خطأ في إضافة المحاضرة: ", error);
+                alert("حدث خطأ. حاول مرة أخرى.");
+            }
+            button.innerText = "إضافة المحاضرة";
+            button.disabled = false;
+        });
+
+        // --- سادساً: أزرار الخروج والرجوع ---
+        
+        // زر الخروج (نفسه)
         logoutButton.addEventListener('click', () => {
             if (confirm("هل أنت متأكد أنك تريد تسجيل الخروج؟")) {
                 signOut(auth).then(() => {
-                    // تم الخروج بنجاح
-                    window.location.href = "login.html"; // وديه لصفحة الدخول
-                }).catch((error) => {
-                    console.error("خطأ بتسجيل الخروج: ", error);
+                    window.location.href = "login.html";
                 });
             }
         });
+
+        // زر الرجوع (جديد)
+        backButton.addEventListener('click', () => {
+            window.location.href = "index.html"; // يرجعك للرئيسية
+        });
+
+        // --- سابعاً: تشغيل كلشي أول ما تفتح الصفحة ---
+        loadTeachersDropdowns();
 
     </script>
 
