@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - منصة سَما</title>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-container img {
+            width: 100px; /* حجم اللوكو */
+            margin-bottom: 1rem;
+        }
+        .login-container h1 {
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+        .login-form input {
+            width: 90%;
+            padding: 12px;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Cairo', sans-serif;
+        }
+        .login-form button {
+            width: 100%;
+            padding: 12px;
+            background-color: #28a745; /* لون أخضر حلو للدخول */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-family: 'Cairo', sans-serif;
+            font-weight: bold;
+        }
+        .login-form button:hover {
+            background-color: #218838;
+        }
+        .register-link {
+            margin-top: 1rem;
+            display: block;
+            color: #555;
+        }
+        .register-link a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-container">
+        
+        <img src="logo.png" alt="لوكو منصة سَما"> <h1>تسجيل الدخول</h1>
+        <p>أهلاً بعودتك إلى منصة سَما!</p>
+
+        <form id="login-form" class="login-form">
+            <input type="email" id="email" placeholder="البريد الإلكتروني" required>
+            <input type="password" id="password" placeholder="كلمة المرور" required>
+            
+            <button type="submit" id="login-button">دخول</button>
+        </form>
+
+        <span class="register-link">
+            ليس لديك حساب؟ <a href="register.html">إنشاء حساب جديد</a>
+        </span>
+    </div>
+
+    <script type="module">
+        // استيراد الخدمات من الملف الأول (firebase-config.js)
+        // لازم يكون ملف config.js موجود بنفس الفولدر
+        import { auth, db } from './firebase-config.js';
+        import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+        import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+        // --- هنا الكود يشتغل ---
+
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginButton = document.getElementById('login-button');
+
+        loginButton.addEventListener('click', async (e) => {
+            e.preventDefault(); // منع الفورم من عمل ريلود
+
+            const email = emailInput.value;
+            const password = passwordInput.value;
+
+            if (email === "" || password === "") {
+                alert("يرجى إدخال الإيميل وكلمة المرور");
+                return;
+            }
+
+            try {
+                // 1. محاولة تسجيل الدخول
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // 2. أهم خطوة: جلب "صفة" (role) المستخدم من قاعدة البيانات
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
+                    
+                    // 3. الفرز (الـ Checkpoint)
+                    if (userData.role === "admin") {
+                        // هذا الأدمن مالتنا
+                        alert("أهلاً بك يا مدير! يتم توجيهك للوحة التحكم...");
+                        window.location.href = "admin_control.html"; // صفحة الأدمن
+                    } else {
+                        // هذا طالب عادي (student)
+                        alert("أهلاً بك مجدداً في منصة سَما!");
+                        window.location.href = "index.html"; // الصفحة الرئيسية
+                    }
+
+                } else {
+                    // حالة نادرة (نعامله كطالب)
+                    alert("أهلاً بك في منصة سَما!");
+                    window.location.href = "index.html";
+                }
+
+            } catch (error) {
+                // 4. إذا فشل الدخول (مثلاً الباسورد غلط)
+                if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                     alert("خطأ: الإيميل أو كلمة المرور غير صحيحة.");
+                } else {
+                     alert("حدث خطأ: " + error.message);
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
