@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المدرس - منصة سَما</title>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f4f7f6;
+            display: none; /* إخفاء الصفحة بالبداية */
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        h1 { color: #333; text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        /* (جديد) اسم المدرس اللي دتعدله */
+        #teacher-name-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            text-align: center;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+        .form-section { margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem; }
+        .form-section h2 { color: #555; border-right: 4px solid #007bff; padding-right: 10px; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input,
+        .form-group select { width: 95%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-family: 'Cairo', sans-serif; }
+        .form-group button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        
+        /* (جديد) لستة الفصول والمحاضرات */
+        #content-list-container {
+            background-color: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #content-list-container ul { list-style-type: none; padding-right: 20px; margin: 0; }
+        #content-list-container .season-item {
+            font-weight: bold;
+            color: #007bff;
+            margin-top: 10px;
+        }
+        #content-list-container .episode-item {
+            font-weight: normal;
+            color: #555;
+            padding-right: 20px;
+            border-right: 2px solid #ddd;
+        }
+
+        /* زر الرجوع */
+        .nav-buttons button {
+            width: 100%; padding: 12px; background-color: #6c757d; color: white; border: none;
+            border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>إدارة محتوى المدرس</h1>
+        <h2 id="teacher-name-display">جاري تحميل اسم المدرس...</h2>
+
+        <div class="form-section" id="current-content-section">
+            <h2>المحتوى المضاف حالياً</h2>
+            <div id="content-list-container">
+                <ul id="content-list">
+                    <li id="content-loader">جاري تحميل المحتوى...</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="form-section" id="add-season-section">
+            <h2>إضافة فصل جديد (لهذا المدرس)</h2>
+            <form id="add-season-form">
+                <div class="form-group">
+                    <label for="season-title">عنوان الفصل:</label>
+                    <input type="text" id="season-title" placeholder="مثال: الفصل الأول - المتسعات" required>
+                </div>
+                <div class="form-group">
+                    <label for="season-order">تسلسل الفصل (رقم):</label>
+                    <input type="number" id="season-order" placeholder="مثال: 1 (لترتيب الفصول)" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" id="add-season-button">إضافة الفصل</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="form-section" id="add-episode-section">
+            <h2>إضافة محاضرة (حلقة)</h2>
+            <form id="add-episode-form">
+                <div class="form-group">
+                    <label for="episode-season">اختر الفصل (لهذا المدرس):</label>
+                    <select id="episode-season-select" required>
+                        <option value="">(أضف فصل أولاً)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="episode-title">عنوان المحاضرة:</label>
+                    <input type="text" id="episode-title" placeholder="مثال: المحاضرة 1 - شرح المتسعة" required>
+                </div>
+                <div class="form-group">
+                    <label for="episode-video-url">رابط الفيديو (من Bunny.net):</label>
+                    <input type="text" id="episode-video-url" placeholder="httpsS://... (رابط الفيديو)" required>
+                </div>
+                <div class="form-group">
+                    <label for="episode-order">تسلسل المحاضرة (رقم):</label>
+                    <input type="number" id="episode-order" placeholder="مثال: 1 (لترتيب المحاضرات)" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" id="add-episode-button">إضافة المحاضرة</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="form-group nav-buttons">
+            <button id="backButton">الرجوع للوحة التحكم الرئيسية</button>
+        </div>
+        
+    </div> <script type="module" src="admin-guard.js"></script>
+
+    <script type="module">
+        // استيراد الخدمات (لازم ملف config.js يكون موجود)
+        import { db } from './firebase-config.js';
+        import { collection, addDoc, getDocs, doc, getDoc, query, orderBy, collectionGroup } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+        // --- جلب العناصر ---
+        const teacherNameDisplay = document.getElementById('teacher-name-display');
+        const contentList = document.getElementById('content-list');
+        const contentLoader = document.getElementById('content-loader');
+        
+        const addSeasonForm = document.getElementById('add-season-form');
+        const addEpisodeForm = document.getElementById('add-episode-form');
+        
+        const episodeSeasonSelect = document.getElementById('episode-season-select');
+        const backButton = document.getElementById('backButton');
+
+        // --- (أهم خطوة) جلب الـ ID مال المدرس من الرابط (URL) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const teacherId = urlParams.get('id'); // هذا هو الـ ID
+        
+        let teacherRef; // راح نخزن المدرس هنا حتى الكل يستخدمه
+
+        // --- دالة: جلب معلومات المدرس والفصول ---
+        async function loadTeacherData() {
+            if (!teacherId) {
+                alert("خطأ: لم يتم العثور على المدرس.");
+                window.location.href = "admin_control.html"; // رجعه
+                return;
+            }
+
+            try {
+                // 1. جلب معلومات المدرس (حتى نعرض اسمه)
+                teacherRef = doc(db, "teachers", teacherId); // هذا هو "مرجع" المدرس
+                const teacherSnap = await getDoc(teacherRef);
+
+                if (!teacherSnap.exists()) {
+                    alert("خطأ: المدرس غير موجود.");
+                    return;
+                }
+                
+                const teacherData = teacherSnap.data();
+                teacherNameDisplay.innerText = `للمدرس: ${teacherData.name}`;
+
+                // 2. جلب الفصول مالته (للقائمة Dropdown)
+                await loadSeasonsDropdown();
+                
+                // 3. (جديد) جلب المحتوى الكامل (للعرض)
+                await loadFullContentList();
+
+            } catch (error) {
+                console.error("خطأ بجلب بيانات المدرس: ", error);
+                teacherNameDisplay.innerText = "خطأ بالتحميل";
+            }
+        }
+
+        // --- دالة: تحميل الفصول بالـ Dropdown (لإضافة محاضرة) ---
+        async function loadSeasonsDropdown() {
+            try {
+                const seasonsRef = collection(teacherRef, "seasons");
+                const q = query(seasonsRef, orderBy("order", "asc"));
+                const seasonsSnapshot = await getDocs(q);
+
+                if (seasonsSnapshot.empty) {
+                    episodeSeasonSelect.innerHTML = '<option value="">هذا المدرس ليس لديه فصول بعد</option>';
+                    return;
+                }
+                
+                episodeSeasonSelect.innerHTML = '<option value="">-- اختر الفصل --</option>';
+                seasonsSnapshot.forEach((doc) => {
+                    const season = doc.data();
+                    const seasonId = doc.id;
+                    const option = new Option(season.title, seasonId);
+                    episodeSeasonSelect.add(option);
+                });
+            } catch (error) {
+                console.error("خطأ بجلب الفصول: ", error);
+            }
+        }
+        
+        // --- (جديد) دالة: تحميل اللستة الكاملة (فصول + محاضرات) للعرض ---
+        async function loadFullContentList() {
+            contentList.innerHTML = ""; // نمسح "جاري التحميل"
+            try {
+                const seasonsRef = collection(teacherRef, "seasons");
+                const qSeasons = query(seasonsRef, orderBy("order", "asc"));
+                const seasonsSnapshot = await getDocs(qSeasons);
+
+                if (seasonsSnapshot.empty) {
+                    contentList.innerHTML = '<li>لا يوجد محتوى لهذا المدرس.</li>';
+                    return;
+                }
+
+                // نلف على كل "فصل"
+                for (const seasonDoc of seasonsSnapshot.docs) {
+                    const season = seasonDoc.data();
+                    const seasonId = seasonDoc.id;
+                    
+                    // نضيف عنصر "الفصل" للّستة
+                    const seasonLi = document.createElement('li');
+                    seasonLi.className = 'season-item';
+                    seasonLi.innerText = `الفصل ${season.order}: ${season.title}`;
+                    contentList.appendChild(seasonLi);
+                    
+                    // نسوي "لستة فرعية" للمحاضرات
+                    const episodesUl = document.createElement('ul');
+                    contentList.appendChild(episodesUl);
+
+                    // نجيب "المحاضرات" مال هذا الفصل
+                    const episodesRef = collection(seasonDoc.ref, "episodes");
+                    const qEpisodes = query(episodesRef, orderBy("order", "asc"));
+                    const episodesSnapshot = await getDocs(qEpisodes);
+
+                    if (episodesSnapshot.empty) {
+                        episodesUl.innerHTML = '<li class="episode-item">لا يوجد محاضرات بهذا الفصل.</li>';
+                    } else {
+                        // نلف على كل "محاضرة"
+                        episodesSnapshot.forEach((episodeDoc) => {
+                            const episode = episodeDoc.data();
+                            const episodeLi = document.createElement('li');
+                            episodeLi.className = 'episode-item';
+                            episodeLi.innerText = `حلقة ${episode.order}: ${episode.title}`;
+                            episodesUl.appendChild(episodeLi);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("خطأ بجلب المحتوى الكامل: ", error);
+                contentList.innerHTML = '<li>خطأ في تحميل المحتوى.</li>';
+            }
+        }
+
+        // --- كود "إضافة الفصل" (معدل) ---
+        addSeasonForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('season-title').value;
+            const order = Number(document.getElementById('season-order').value);
+            const button = document.getElementById('add-season-button');
+
+            button.innerText = "جاري الإضافة...";
+            button.disabled = true;
+
+            try {
+                // (معدل) نستخدم الـ teacherRef الجاهز
+                const seasonsRef = collection(teacherRef, "seasons");
+                await addDoc(seasonsRef, {
+                    title: title,
+                    order: order,
+                    createdAt: new Date()
+                });
+                alert("تمت إضافة الفصل بنجاح!");
+                addSeasonForm.reset();
+                
+                // (جديد) تحديث اللستات
+                loadSeasonsDropdown();
+                loadFullContentList();
+
+            } catch (error) {
+                console.error("خطأ في إضافة الفصل: ", error);
+                alert("حدث خطأ. حاول مرة أخرى.");
+            }
+            button.innerText = "إضافة الفصل";
+            button.disabled = false;
+        });
+
+        // --- كود "إضافة المحاضرة" (معدل) ---
+        addEpisodeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const seasonId = episodeSeasonSelect.value;
+            const title = document.getElementById('episode-title').value;
+            const videoUrl = document.getElementById('episode-video-url').value;
+            const order = Number(document.getElementById('episode-order').value);
+            const button = document.getElementById('add-episode-button');
+
+            if (!seasonId) { alert("يرجى اختيار الفصل أولاً"); return; }
+
+            button.innerText = "جاري الإضافة...";
+            button.disabled = true;
+
+            try {
+                // (معدل) نستخدم الـ teacherRef الجاهز
+                const seasonRef = doc(teacherRef, "seasons", seasonId);
+                const episodesRef = collection(seasonRef, "episodes");
+                await addDoc(episodesRef, {
+                    title: title,
+                    videoUrl: videoUrl,
+                    order: order,
+                    createdAt: new Date()
+                });
+                alert("تمت إضافة المحاضرة بنجاح!");
+                addEpisodeForm.reset();
+
+                // (جديد) تحديث لستة العرض
+                loadFullContentList();
+
+            } catch (error) {
+                console.error("خطأ في إضافة المحاضرة: ", error);
+                alert("حدث خطأ. حاول مرة أخرى.");
+            }
+            button.innerText = "إضافة المحاضرة";
+            button.disabled = false;
+        });
+
+        // --- زر الرجوع ---
+        backButton.addEventListener('click', () => {
+            window.location.href = "admin_control.html"; // يرجعك لصفحة الأدمن الرئيسية
+        });
+
+        // --- تشغيل كلشي أول ما تفتح الصفحة ---
+        loadTeacherData();
+
+    </script>
+
+</body>
+</html>
