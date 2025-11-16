@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم - منصة سَما</title>
+    <title>لوحة التحكم - (نسخة فحص)</title>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
@@ -23,68 +23,43 @@
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
-        h1 { color: #333; text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        h1 { color: #333; text-align: center; }
         .form-section { margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem; }
-        .form-section h2 { color: #555; border-right: 4px solid #007bff; padding-right: 10px; }
+        .form-section h2 { color: #555; }
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input { width: 95%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-family: 'Cairo', sans-serif; }
-        .form-group button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .form-group input { width: 95%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .form-group button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
         
-        /* ستايل لستة المدرسين (المعدلة) */
-        #teachers-list-container {
-            background-color: #fafafa;
-            border: 1px solid #eee;
-            border-radius: 5px;
-            padding: 1rem;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        #teachers-list-container ul { list-style-type: none; padding: 0; margin: 0; }
-        /* (جديد) هذا هو الرابط اللي راح ندوس عليه */
-        #teachers-list-container .teacher-link {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-            text-decoration: none;
-            color: #333;
-            transition: background-color 0.2s ease;
-        }
-        #teachers-list-container .teacher-link:hover {
-            background-color: #e9f5ff; /* لون أزرق خفيف */
-        }
-        #teachers-list-container .teacher-link strong { color: #007bff; }
+        #teachers-list-container { background-color: #fafafa; border: 1px solid #eee; padding: 1rem; }
+        #teachers-list { list-style-type: none; padding: 0; }
         
-        /* أزرار الخروج والرجوع */
         .nav-buttons { display: flex; gap: 10px; margin-top: 1rem; }
-        .nav-buttons button { flex: 1; }
-        #logoutButton { background-color: #dc3545; }
-        #backButton { background-color: #6c757d; }
+        .nav-buttons button { flex: 1; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        #logoutButton { background-color: #dc3545; color: white; }
+        #backButton { background-color: #6c757d; color: white; }
     </style>
 </head>
 
 <body>
 
     <div class="container">
-        <h1>لوحة تحكم (منصة سَما)</h1>
-        <p>مرحباً أيها المدير! من هنا يمكنك إضافة المدرسين وإدارة محتواهم.</p>
+        <h1>لوحة تحكم (نسخة فحص)</h1>
 
         <div class="form-section" id="add-teacher-section">
             <h2>1. إضافة مدرس جديد</h2>
             <form id="add-teacher-form">
                 <div class="form-group">
                     <label for="teacher-name">اسم المدرس:</label>
-                    <input type="text" id="teacher-name" placeholder="مثال: حيدر وليد" required>
+                    <input type="text" id="teacher-name" required>
                 </div>
                 <div class="form-group">
                     <label for="teacher-subject">المادة:</label>
-                    <input type="text" id="teacher-subject" placeholder="مثال: الرياضيات" required>
+                    <input type="text" id="teacher-subject" required>
                 </div>
                 <div class="form-group">
                     <label for="teacher-image-url">رابط صورة المدرس:</label>
-                    <input type="text" id="teacher-image-url" placeholder="https://.... (رابط صورة)" required>
+                    <input type="text" id="teacher-image-url" required>
                 </div>
                 <div class="form-group">
                     <button type="submit" id="add-teacher-button">إضافة المدرس</button>
@@ -94,10 +69,9 @@
 
         <div class="form-section" id="current-teachers-section">
             <h2>2. إدارة المدرسين</h2>
-            <p>اضغط على اسم المدرس لإضافة الفصول والمحاضرات له:</p>
             <div id="teachers-list-container">
                 <ul id="teachers-list">
-                    <li id="list-loader" style="padding: 10px;">جاري تحميل اللستة...</li>
+                    <li id="list-loader">جاري تحميل اللستة...</li>
                 </ul>
             </div>
         </div>
@@ -110,7 +84,9 @@
     </div> <script type="module" src="admin-guard.js"></script>
 
     <script type="module">
-        // استيراد الخدمات (لازم ملف config.js يكون موجود)
+        console.log("بدء تشغيل كود admin_control.html");
+
+        // استيراد الخدمات
         import { db, auth } from './firebase-config.js';
         import { collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
         import { signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
@@ -121,10 +97,15 @@
         const logoutButton = document.getElementById('logoutButton');
         const backButton = document.getElementById('backButton');
         
-        // (جديد) دالة تحميل لستة المدرسين (المعدلة)
+        console.log("تم جلب العناصر (Forms, Buttons)");
+
+        // --- دالة تحميل لستة المدرسين ---
         async function loadAddedTeachersList() {
+            console.log("بدء دالة (loadAddedTeachersList)...");
             try {
                 const teachersSnapshot = await getDocs(collection(db, "teachers"));
+                console.log("تم جلب المدرسين:", teachersSnapshot.size);
+                
                 teachersList.innerHTML = ""; // نمسح "جاري التحميل"
 
                 if (teachersSnapshot.empty) {
@@ -134,34 +115,35 @@
 
                 teachersSnapshot.forEach((doc) => {
                     const teacher = doc.data();
-                    const teacherId = doc.id; // الـ ID مال المدرس
+                    const teacherId = doc.id;
                     
-                    // (جديد) نصنع "رابط" (Link) مو بس لستة
                     const link = document.createElement('a');
                     link.className = 'teacher-link';
-                    // !!! أهم سطر: نودي الـ ID بالرابط !!!
                     link.href = `teacher-edit.html?id=${teacherId}`; 
+                    link.style.textDecoration = 'none'; // ستايل بسيط
+                    link.style.display = 'block';
+                    link.style.padding = '10px';
+                    link.style.borderBottom = '1px solid #ddd';
                     
-                    link.innerHTML = `
-                        <strong>${teacher.name}</strong>
-                        <span>${teacher.subject}</span>
-                    `;
+                    link.innerHTML = `<strong>${teacher.name}</strong> - <span>${teacher.subject}</span>`;
                     
-                    // نضيف الرابط (اللي شكله مثل اللستة)
                     const li = document.createElement('li');
                     li.appendChild(link);
                     teachersList.appendChild(li);
                 });
+                console.log("تم عرض اللستة بنجاح.");
 
             } catch (error) {
-                console.error("خطأ بجلب لستة المدرسين: ", error);
-                teachersList.innerHTML = '<li style="padding: 10px;">خطأ في تحميل اللستة.</li>';
+                console.error("!!!! خطأ فادح بجلب لستة المدرسين !!!!", error);
+                teachersList.innerHTML = `<li style="padding: 10px; color: red;">خطأ في تحميل اللستة: ${error.message}</li>`;
             }
         }
 
-        // --- كود "إضافة المدرس" (معدل) ---
+        // --- كود "إضافة المدرس" ---
         addTeacherForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log("تم الضغط على زر إضافة مدرس...");
+            
             const name = document.getElementById('teacher-name').value;
             const subject = document.getElementById('teacher-subject').value;
             const imageUrl = document.getElementById('teacher-image-url').value;
@@ -171,27 +153,41 @@
             button.disabled = true;
 
             try {
-                await addDoc(collection(db, "teachers"), {
+                console.log("جاري إرسال البيانات لفايربيس...");
+                const docRef = await addDoc(collection(db, "teachers"), {
                     name: name,
                     subject: subject,
                     imageUrl: imageUrl,
                     createdAt: new Date()
                 });
+                console.log("تمت الإضافة بنجاح! ID:", docRef.id);
                 alert("تمت إضافة المدرس بنجاح!");
                 addTeacherForm.reset();
                 
-                // !!! التحديث الفوري (الجديد) !!!
-                loadAddedTeachersList(); // تحديث اللستة (List)
+                // تحديث اللستة
+                loadAddedTeachersList(); 
 
             } catch (error) {
-                console.error("خطأ في إضافة المدرس: ", error);
-                alert("حدث خطأ. حاول مرة أخرى.");
+                console.error("!!!! خطأ فادح بإضافة المدرس !!!!", error);
+                alert("حدث خطأ. حاول مرة أخرى. راجع الـ Console");
             }
             button.innerText = "إضافة المدرس";
             button.disabled = false;
         });
 
-        // --- أزرار الخروج والرجوع (نفسها) ---
+        // --- أزرار الخروج والرجوع ---
         logoutButton.addEventListener('click', () => {
-            if (confirm("هل أنت متأكد أنك تريد تسجيل الخروج؟")) {
-                signOut(auth).then(() => { window.
+            signOut(auth).then(() => { window.location.href = "login.html"; });
+        });
+        backButton.addEventListener('click', () => {
+            window.location.href = "index.html";
+        });
+
+        // --- تشغيل كلشي أول ما تفتح الصفحة ---
+        console.log("جاري تشغيل (loadAddedTeachersList) لأول مرة...");
+        loadAddedTeachersList();
+
+    </script>
+
+</body>
+</html>
