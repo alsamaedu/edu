@@ -70,6 +70,41 @@
             background-color: #218838;
         }
         
+        /* ستايل لستة المدرسين (الجديدة) */
+        #teachers-list-container {
+            background-color: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 1rem;
+            max-height: 300px; /* حتى ما تصير طويلة كلش */
+            overflow-y: auto; /* سكرول إذا زادوا */
+        }
+        #teachers-list-container ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        #teachers-list-container li {
+            display: flex;
+            justify-content: space-between; /* اسم المدرس بجهة والمادة بجهة */
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        #teachers-list-container li:last-child {
+            border-bottom: none;
+        }
+        #teachers-list-container li strong {
+            color: #007bff;
+        }
+        #teachers-list-container .list-header {
+            font-weight: bold;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+
         /* أزرار الخروج والرجوع */
         .nav-buttons {
             display: flex;
@@ -77,19 +112,13 @@
             margin-top: 1rem;
         }
         .nav-buttons button {
-            flex: 1; /* ياخذون نفس العرض */
+            flex: 1; 
         }
         #logoutButton {
             background-color: #dc3545;
         }
-        #logoutButton:hover {
-            background-color: #c82333;
-        }
         #backButton {
             background-color: #6c757d;
-        }
-        #backButton:hover {
-            background-color: #5a6268;
         }
     </style>
 </head>
@@ -121,11 +150,24 @@
             </form>
         </div>
 
+        <div class="form-section" id="current-teachers-section">
+            <h2>المدرسين المضافين حالياً</h2>
+            <div id="teachers-list-container">
+                <div class="list-header">
+                    <span>اسم المدرس</span>
+                    <span>المادة</span>
+                </div>
+                <ul id="teachers-list">
+                    <li id="list-loader">جاري تحميل اللستة...</li>
+                </ul>
+            </div>
+        </div>
+
         <div class="form-section" id="add-season-section">
             <h2>2. إضافة فصل جديد</h2>
             <form id="add-season-form">
                 <div class="form-group">
-                    <label for="season-teacher">اختر المدرس:</label>
+                    <label for="season-teacher">اختر المدرس (من اللستة الفوك):</label>
                     <select id="season-teacher-select" required>
                         <option value="">جاري تحميل المدرسين...</option>
                     </select>
@@ -136,7 +178,7 @@
                 </div>
                 <div class="form-group">
                     <label for="season-order">تسلسل الفصل (رقم):</label>
-                    <input type="number" id="season-order" placeholder="مثال: 1 (لترتيب الفصول)" required>
+                    <input type="number" id="season-order" placeholder="مثال: 1" required>
                 </div>
                 <div class="form-group">
                     <button type="submit" id="add-season-button">إضافة الفصل</button>
@@ -169,7 +211,7 @@
                 </div>
                 <div class="form-group">
                     <label for="episode-order">تسلسل المحاضرة (رقم):</label>
-                    <input type="number" id="episode-order" placeholder="مثال: 1 (لترتيب المحاضرات)" required>
+                    <input type="number" id="episode-order" placeholder="مثال: 1" required>
                 </div>
                 <div class="form-group">
                     <button type="submit" id="add-episode-button">إضافة المحاضرة</button>
@@ -187,7 +229,7 @@
     <script type="module">
         // استيراد الخدمات (لازم ملف config.js يكون موجود)
         import { db, auth } from './firebase-config.js';
-        import { collection, addDoc, getDocs, doc, setDoc, query, where, orderBy, collectionGroup } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+        import { collection, addDoc, getDocs, doc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
         import { signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
         // --- جلب كل العناصر (DOM Elements) ---
@@ -199,15 +241,44 @@
         const episodeTeacherSelect = document.getElementById('episode-teacher-select');
         const episodeSeasonSelect = document.getElementById('episode-season-select');
 
+        // (جديد) لستة المدرسين
+        const teachersList = document.getElementById('teachers-list');
+
         const logoutButton = document.getElementById('logoutButton');
         const backButton = document.getElementById('backButton');
+        
+        // (جديد) دالة تحميل لستة المدرسين
+        async function loadAddedTeachersList() {
+            try {
+                const teachersSnapshot = await getDocs(collection(db, "teachers"));
+                teachersList.innerHTML = ""; // نمسح "جاري التحميل"
 
-        // --- أولاً: تحميل المدرسين بالـ Dropdowns (القوائم) ---
+                if (teachersSnapshot.empty) {
+                    teachersList.innerHTML = '<li>لا يوجد مدرسين مضافين بعد.</li>';
+                    return;
+                }
+
+                teachersSnapshot.forEach((doc) => {
+                    const teacher = doc.data();
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <strong>${teacher.name}</strong>
+                        <span>${teacher.subject}</span>
+                    `;
+                    teachersList.appendChild(li);
+                });
+
+            } catch (error) {
+                console.error("خطأ بجلب لستة المدرسين: ", error);
+                teachersList.innerHTML = '<li>خطأ في تحميل اللستة.</li>';
+            }
+        }
+
+        // --- (معدل) تحميل المدرسين بالـ Dropdowns (القوائم) ---
         async function loadTeachersDropdowns() {
             try {
                 const teachersSnapshot = await getDocs(collection(db, "teachers"));
                 
-                // نمسح الخيارات الافتراضية
                 seasonTeacherSelect.innerHTML = '<option value="">-- اختر المدرس --</option>';
                 episodeTeacherSelect.innerHTML = '<option value="">-- اختر المدرس --</option>';
 
@@ -220,10 +291,8 @@
                 teachersSnapshot.forEach((doc) => {
                     const teacher = doc.data();
                     const teacherId = doc.id;
-                    
-                    const option1 = new Option(teacher.name, teacherId); // (النص، القيمة)
+                    const option1 = new Option(teacher.name, teacherId); 
                     const option2 = new Option(teacher.name, teacherId);
-                    
                     seasonTeacherSelect.add(option1);
                     episodeTeacherSelect.add(option2);
                 });
@@ -234,9 +303,10 @@
             }
         }
         
-        // --- ثانياً: كود "إضافة المدرس" (نفسه من قبل) ---
+        // --- كود "إضافة المدرس" (معدل) ---
         addTeacherForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            // ... (نفس الكود السابق)
             const name = document.getElementById('teacher-name').value;
             const subject = document.getElementById('teacher-subject').value;
             const imageUrl = document.getElementById('teacher-image-url').value;
@@ -254,7 +324,11 @@
                 });
                 alert("تمت إضافة المدرس بنجاح!");
                 addTeacherForm.reset();
-                loadTeachersDropdowns(); // !!! تحديث القوائم بعد الإضافة
+                
+                // !!! التحديث الفوري (الجديد) !!!
+                loadTeachersDropdowns(); // تحديث القوائم (Dropdowns)
+                loadAddedTeachersList(); // تحديث اللستة (List)
+
             } catch (error) {
                 console.error("خطأ في إضافة المدرس: ", error);
                 alert("حدث خطأ. حاول مرة أخرى.");
@@ -263,38 +337,29 @@
             button.disabled = false;
         });
 
-        // --- ثالثاً: كود "إضافة الفصل" (جديد) ---
+        // --- كود "إضافة الفصل" (نفسه) ---
         addSeasonForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const teacherId = seasonTeacherSelect.value;
             const title = document.getElementById('season-title').value;
-            const order = Number(document.getElementById('season-order').value); // نحول الرقم
+            const order = Number(document.getElementById('season-order').value);
             const button = document.getElementById('add-season-button');
 
-            if (!teacherId) {
-                alert("يرجى اختيار المدرس أولاً");
-                return;
-            }
+            if (!teacherId) { alert("يرجى اختيار المدرس أولاً"); return; }
 
             button.innerText = "جاري الإضافة...";
             button.disabled = true;
 
             try {
-                // هذا هو "العقل":
-                // 1. نروح للمدرس المحدد
                 const teacherRef = doc(db, "teachers", teacherId);
-                // 2. نسوي "مجموعة فرعية" (subcollection) بداخله اسمها "seasons"
                 const seasonsRef = collection(teacherRef, "seasons");
-                // 3. نضيف الفصل الجديد
                 await addDoc(seasonsRef, {
                     title: title,
                     order: order,
                     createdAt: new Date()
                 });
-
                 alert("تمت إضافة الفصل بنجاح!");
                 addSeasonForm.reset();
-
             } catch (error) {
                 console.error("خطأ في إضافة الفصل: ", error);
                 alert("حدث خطأ. حاول مرة أخرى.");
@@ -303,11 +368,10 @@
             button.disabled = false;
         });
 
-        // --- رابعاً: كود "جلب الفصول" (ديناميكي) ---
-        // هذا الكود يشتغل من نختار "مدرس" بفورم المحاضرات
+        // --- كود "جلب الفصول" (نفسه) ---
         episodeTeacherSelect.addEventListener('change', async (e) => {
             const teacherId = e.target.value;
-            episodeSeasonSelect.innerHTML = '<option value="">جاري تحميل الفصول...</option>'; // شاشة تحميل
+            episodeSeasonSelect.innerHTML = '<option value="">جاري تحميل الفصول...</option>';
             episodeSeasonSelect.disabled = true;
 
             if (!teacherId) {
@@ -316,11 +380,8 @@
             }
 
             try {
-                // 1. نروح للمدرس المحدد
                 const teacherRef = doc(db, "teachers", teacherId);
-                // 2. نجيب "المجموعة الفرعية" (subcollection) مال الفصول مالته
                 const seasonsRef = collection(teacherRef, "seasons");
-                // 3. نرتبها حسب "التسلسل" (order)
                 const q = query(seasonsRef, orderBy("order", "asc"));
                 const seasonsSnapshot = await getDocs(q);
 
@@ -333,19 +394,18 @@
                 seasonsSnapshot.forEach((doc) => {
                     const season = doc.data();
                     const seasonId = doc.id;
-                    const option = new Option(season.title, seasonId); // (النص، القيمة)
+                    const option = new Option(season.title, seasonId);
                     episodeSeasonSelect.add(option);
                 });
                 
                 episodeSeasonSelect.disabled = false;
-
             } catch (error) {
                 console.error("خطأ بجلب الفصول: ", error);
                 episodeSeasonSelect.innerHTML = '<option value="">خطأ بالتحميل</option>';
             }
         });
 
-        // --- خامساً: كود "إضافة المحاضرة" (جديد) ---
+        // --- كود "إضافة المحاضرة" (نفسه) ---
         addEpisodeForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const teacherId = episodeTeacherSelect.value;
@@ -355,37 +415,25 @@
             const order = Number(document.getElementById('episode-order').value);
             const button = document.getElementById('add-episode-button');
 
-            if (!teacherId || !seasonId) {
-                alert("يرجى اختيار المدرس والفصل أولاً");
-                return;
-            }
+            if (!teacherId || !seasonId) { alert("يرجى اختيار المدرس والفصل أولاً"); return; }
 
             button.innerText = "جاري الإضافة...";
             button.disabled = true;
 
             try {
-                // هذا هو "العقل":
-                // 1. نروح للمدرس المحدد
                 const teacherRef = doc(db, "teachers", teacherId);
-                // 2. نروح للفصل المحدد (داخل المدرس)
                 const seasonRef = doc(teacherRef, "seasons", seasonId);
-                // 3. نسوي "مجموعة فرعية" (subcollection) بداخل الفصل اسمها "episodes"
                 const episodesRef = collection(seasonRef, "episodes");
-                // 4. نضيف المحاضرة الجديدة
                 await addDoc(episodesRef, {
                     title: title,
                     videoUrl: videoUrl,
                     order: order,
                     createdAt: new Date()
                 });
-
                 alert("تمت إضافة المحاضرة بنجاح!");
                 addEpisodeForm.reset();
-                // نعيد تحميل الفصول (اختياري)
                 episodeSeasonSelect.innerHTML = '<option value="">(اختر مدرس أولاً)</option>';
                 episodeTeacherSelect.value = "";
-
-
             } catch (error) {
                 console.error("خطأ في إضافة المحاضرة: ", error);
                 alert("حدث خطأ. حاول مرة أخرى.");
@@ -394,24 +442,19 @@
             button.disabled = false;
         });
 
-        // --- سادساً: أزرار الخروج والرجوع ---
-        
-        // زر الخروج (نفسه)
+        // --- أزرار الخروج والرجوع (نفسها) ---
         logoutButton.addEventListener('click', () => {
             if (confirm("هل أنت متأكد أنك تريد تسجيل الخروج؟")) {
-                signOut(auth).then(() => {
-                    window.location.href = "login.html";
-                });
+                signOut(auth).then(() => { window.location.href = "login.html"; });
             }
         });
-
-        // زر الرجوع (جديد)
         backButton.addEventListener('click', () => {
-            window.location.href = "index.html"; // يرجعك للرئيسية
+            window.location.href = "index.html";
         });
 
-        // --- سابعاً: تشغيل كلشي أول ما تفتح الصفحة ---
-        loadTeachersDropdowns();
+        // --- تشغيل كلشي أول ما تفتح الصفحة ---
+        loadTeachersDropdowns(); // تحميل القوائم (Dropdowns)
+        loadAddedTeachersList(); // (جديد) تحميل اللستة (List)
 
     </script>
 
